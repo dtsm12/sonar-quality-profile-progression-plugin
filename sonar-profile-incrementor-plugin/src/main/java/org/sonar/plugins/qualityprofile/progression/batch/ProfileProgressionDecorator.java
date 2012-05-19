@@ -19,12 +19,16 @@
  */
 package org.sonar.plugins.qualityprofile.progression.batch;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionException;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-
+import java.util.StringTokenizer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +49,6 @@ import org.sonar.jpa.dao.ProfilesDao;
 //TODO add project setting for email address
 //TODO send email when changing profile
 //TODO send email when project breaches threshold for last profile
-//TODO support different languages - how ? (project specific profile list)
 public class ProfileProgressionDecorator implements Decorator
 {
   private DatabaseSession session;
@@ -96,16 +99,16 @@ public class ProfileProgressionDecorator implements Decorator
 
         int violationThreshold = getViolationThreshold();
 
-        String[] profileNameArray = getProfileNameArray();
+        String[] profileNameArray = getProfileNameArray(resource.getLanguage().getKey());
 
         int projectViolationMeasure = getProjectsViolationPercentage(context);
 
-        // if measure lower than threshold
+        // if measure lower than threshold progress quality profile
         if (projectViolationMeasure < violationThreshold)
         {
           logger.info("{} project's % violations ({}) lower than threshold ({}).", new Object[] {resource.getEffectiveKey(),
             projectViolationMeasure, violationThreshold});
-          incrementProfile(resource, profileNameArray);
+          progressQualityProfile(resource, profileNameArray);
         }
         else
         {
@@ -119,7 +122,7 @@ public class ProfileProgressionDecorator implements Decorator
     }
   }
 
-  protected void incrementProfile(Resource resource, String[] profileNameArray) throws ProfileProgressionException
+  protected void progressQualityProfile(Resource resource, String[] profileNameArray) throws ProfileProgressionException
   {
     // get current quality profile - profile class
     // variable
@@ -265,37 +268,87 @@ public class ProfileProgressionDecorator implements Decorator
     return projectViolationPercentage;
   }
 
-  protected String[] getProfileNameArray() throws ProfileProgressionException
+  protected String[] getProfileNameArray(String languageKey) throws ProfileProgressionException
   {
-    String[] profileNameArray = settings.getStringArray(ProfileProgressionPlugin.PROJECT_QUALITY_PROFILE_NAME_ARRAY_KEY);
+    // check for project setting
+    String lastProfileName = getLanguagesTargetProfileName(languageKey, ProfileProgressionPlugin.PROJECT_TARGET_LANGUAGE_QUALITY_PROFILE_KEY);
 
-    if (profileNameArray == null || profileNameArray.length < 1)
+    if (lastProfileName == null || lastProfileName.length() < 1)
     {
-      profileNameArray = settings.getStringArray(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_NAME_ARRAY_KEY);
+      // get global setting
+      lastProfileName = getLanguagesTargetProfileName(languageKey, ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY);
     }
 
-    // validate quality profile list setting
-    if (profileNameArray == null || profileNameArray.length < 1)
+    if (lastProfileName == null)
     {
-      throw new ProfileProgressionException("No profile name list setting found.");
+      throw new ProfileProgressionException("No target quality profile found.");
     }
 
-    return profileNameArray;
+    return getProfileHierchy(languageKey, lastProfileName);
   }
 
-  protected String[] getProfileNameArray(String profileNameArrayKey) throws ProfileProgressionException
+  protected String[] getProfileHierchy(String languageKey, String lastProfileName) throws ProfileProgressionException
   {
-    // get quality profile array
-    String[] profileNameArray = settings.getStringArray(profileNameArrayKey);
+    // collect profile hierarchy
+    List<String> profiles = new ArrayList<String>();
+    profiles.add(lastProfileName);
 
-    logger.debug("Found {} setting: {}", profileNameArrayKey, profileNameArray);
+    // get last profile in hierarchy
+    RulesProfile profile = profilesDao.getProfile(languageKey, lastProfileName);
 
-    // validate quality profile list setting
-    if (profileNameArray != null && profileNameArray.length < 1)
+    // check we can find the specified profile for the current project's language
+    if (profile == null)
     {
-      profileNameArray = null;
+      throw new ProfileProgressionException("Unable to find \"" + lastProfileName + "\" quality profile for language: " + languageKey);
     }
-    return profileNameArray;
+
+    // navigate up profile hierarchy
+    while (profile != null && profile.getParentName() != null)
+    {
+      profiles.add(profile.getParentName());
+      profile = profilesDao.getProfile(languageKey, profile.getParentName());
+    }
+
+    // convert List to String[]
+    String[] profileHierarchy = profiles.toArray(new String[profiles.size()]);
+
+    // make lastProfileName last
+    ArrayUtils.reverse(profileHierarchy);
+
+    return profileHierarchy;
+  }
+
+  protected String getLanguagesTargetProfileName(String languageKey, String settingName)
+  {
+    String targetProfileName = null;
+
+    String targetProfileSetting = settings.getString(settingName);
+
+    if (targetProfileSetting != null) {
+
+      StringTokenizer tokenizer = new StringTokenizer(targetProfileSetting, ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_DELIM);
+
+      // if more than one language extract quality profile assigned to current project's language
+      if (tokenizer.countTokens() > 1 && targetProfileSetting.contains(languageKey))
+      {
+        String langProfilePair = null;
+        while (tokenizer.hasMoreTokens())
+        {
+          langProfilePair = tokenizer.nextToken();
+          if (langProfilePair != null && langProfilePair.startsWith(languageKey))
+          {
+            targetProfileName = langProfilePair.substring(languageKey.length() + ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_ASSIGN.length());
+          }
+        }
+      }
+      else
+      // just take the value specified
+      {
+        targetProfileName = targetProfileSetting.replaceAll(ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_DELIM, "").trim();
+      }
+    }
+
+    return targetProfileName;
   }
 
   protected Integer getViolationThreshold(String thresholdKey) throws ProfileProgressionException

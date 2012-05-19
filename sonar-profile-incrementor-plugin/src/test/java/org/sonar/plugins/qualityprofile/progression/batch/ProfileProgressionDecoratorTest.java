@@ -49,7 +49,8 @@ import org.sonar.api.rules.RulePriority;
 import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.MockProfilesDao;
 
-public class ProfileProgressionDecroratorTest
+//TODO add test for project specified target quality profile
+public class ProfileProgressionDecoratorTest
 {
   Settings settings;
   RulesProfile[] rulesProfiles;
@@ -117,7 +118,7 @@ public class ProfileProgressionDecroratorTest
     settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_ENABLED_KEY, "true");
     settings.setProperty(ProfileProgressionPlugin.PROJECT_QUALITY_PROFILE_CHANGE_ENABLED_KEY, "true");
     settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, String.valueOf(violationThreshold));
-    settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_NAME_ARRAY_KEY, getRulesProfileNames());
+    settings.setProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, rulesProfiles[numberOfProfiles-1].getName());
   }
 
   protected RulesProfile createRulesProfile(String profileName, int numberOfRules)
@@ -138,20 +139,6 @@ public class ProfileProgressionDecroratorTest
     entities.put(profileKey, rulesProfile);
 
     return rulesProfile;
-  }
-
-  protected String getRulesProfileNames()
-  {
-    StringBuffer sb = new StringBuffer();
-    for (int i = 0; i < rulesProfiles.length; i++)
-    {
-      if (i != 0)
-      {
-        sb.append(",");
-      }
-      sb.append(rulesProfiles[i].getName());
-    }
-    return sb.toString();
   }
 
   protected void runAnalysis()
@@ -200,7 +187,6 @@ public class ProfileProgressionDecroratorTest
   {
     // set threshold to not a number
     settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "xx");
-    settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_NAME_ARRAY_KEY, getRulesProfileNames());
 
     // test it doesn't throw any error
     String profileBefore = testProjectModel.getRulesProfile().getName();
@@ -242,7 +228,7 @@ public class ProfileProgressionDecroratorTest
   public void testEmptyQualityProfileList()
   {
     // set threshold to more than 100
-    settings.removeProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_NAME_ARRAY_KEY);
+    settings.removeProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY);
 
     // test it doesn't throw any error
     String profileBefore = testProjectModel.getRulesProfile().getName();
