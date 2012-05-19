@@ -19,17 +19,12 @@
  */
 package org.sonar.plugins.qualityprofile.progression.batch;
 
-import org.apache.commons.lang.ArrayUtils;
-
-import org.sonar.plugins.qualityprofile.progression.ProfileProgressionException;
-import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.batch.Decorator;
@@ -44,6 +39,8 @@ import org.sonar.api.resources.Scopes;
 import org.sonar.api.rules.ActiveRule;
 import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.ProfilesDao;
+import org.sonar.plugins.qualityprofile.progression.ProfileProgressionException;
+import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
 
 //TODO add global setting for email address
 //TODO add project setting for email address
