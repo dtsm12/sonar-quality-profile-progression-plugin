@@ -24,14 +24,20 @@ import org.sonar.plugins.qualityprofile.progression.batch.ProfileProgressionDeco
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.any;
 
 import org.sonar.api.batch.DecoratorContext;
 import org.sonar.api.batch.MockDecoratorContext;
@@ -39,6 +45,8 @@ import org.sonar.api.config.Settings;
 import org.sonar.api.database.MockDatabaseSession;
 import org.sonar.api.database.MockDatabaseSession.EntityKey;
 import org.sonar.api.database.model.ResourceModel;
+import org.sonar.api.notifications.Notification;
+import org.sonar.api.notifications.NotificationManager;
 import org.sonar.api.profiles.RulesProfile;
 import org.sonar.api.resources.Java;
 import org.sonar.api.resources.Project;
@@ -50,12 +58,14 @@ import org.sonar.jpa.dao.MockProfilesDao;
 
 public class ProfileProgressionDecoratorTest
 {
+	MockDatabaseSession databaseSession;
 	Settings settings;
+	NotificationManager notificationManager = mock(NotificationManager.class);
 	RulesProfile[] rulesProfiles;
 	Project testProject;
 	ResourceModel testProjectModel;
-	MockDatabaseSession databaseSession;
 	Map<EntityKey, Object> entities = new HashMap<EntityKey, Object>();
+	List<Violation> violations = new ArrayList<Violation>();
 	DecoratorContext decoratorContext;
 
 	@Before
@@ -89,7 +99,6 @@ public class ProfileProgressionDecoratorTest
 		int violationThreshold = 10;
 
 		// create violations
-		List<Violation> violations = new ArrayList<Violation>();
 		List<ActiveRule> rules = rulesProfiles[0].getActiveRules();
 		int numberOfViolationsToBUnderThreshold = ((numberOfRules / 100) * violationThreshold) - 1;
 		for (int i = 0; i < numberOfViolationsToBUnderThreshold; i++)
@@ -104,7 +113,7 @@ public class ProfileProgressionDecoratorTest
 		settings = new Settings();
 		settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_ENABLED_KEY, "true");
 		settings.setProperty(ProfileProgressionPlugin.PROJECT_QUALITY_PROFILE_CHANGE_ENABLED_KEY, "true");
-		settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, String.valueOf(violationThreshold));
+		settings.setProperty(ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, String.valueOf(violationThreshold));
 		settings.setProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, rulesProfiles[numberOfProfiles - 1].getName());
 	}
 
@@ -148,7 +157,8 @@ public class ProfileProgressionDecoratorTest
 	protected void runAnalysis()
 	{
 		// create decorator
-		ProfileProgressionDecorator decorator = new ProfileProgressionDecorator(databaseSession, testProjectModel.getRulesProfile(), settings);
+		ProfileProgressionDecorator decorator = new ProfileProgressionDecorator(databaseSession, testProjectModel.getRulesProfile(), settings,
+				notificationManager);
 
 		// provide mock profiles dao to access mock entity manager - could
 		// better implement mock entity manager to avoid this
@@ -158,6 +168,23 @@ public class ProfileProgressionDecoratorTest
 		{
 			decorator.decorate(testProject, decoratorContext);
 		}
+	}
+
+	protected void testOutcome(String msg, String expectedProfileName, String actualProfileName, boolean emailExpected)
+	{
+		// check profile is changed, or not
+		Assert.assertEquals(msg, expectedProfileName, actualProfileName);
+
+		// check email is sent, or not
+		if (emailExpected)
+		{
+			verify(notificationManager).scheduleForSending(any(Notification.class));
+		}
+		else
+		{
+			verify(notificationManager, never()).scheduleForSending(any(Notification.class));
+		}
+
 	}
 
 	@Test
@@ -170,7 +197,7 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite plug-in being disabled globally.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite plug-in being disabled globally.", profileBefore, profileAfter, false);
 	}
 
 	@Test
@@ -183,49 +210,49 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite plug-in being disabled by project.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite plug-in being disabled by project.", profileBefore, profileAfter, false);
 	}
 
 	@Test
 	public void testThresholdNan()
 	{
 		// set threshold to not a number
-		settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "xx");
+		settings.setProperty(ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "xx");
 
 		// test it doesn't throw any error
 		String profileBefore = testProjectModel.getRulesProfile().getName();
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite theshold not being a number.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite theshold not being a number.", profileBefore, profileAfter, false);
 	}
 
 	@Test
 	public void testThresholdTooSmall()
 	{
 		// set threshold to negative number
-		settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "-1");
+		settings.setProperty(ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "-1");
 
 		// test it doesn't throw any error
 		String profileBefore = testProjectModel.getRulesProfile().getName();
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite theshold being too small.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite theshold being too small.", profileBefore, profileAfter, false);
 	}
 
 	@Test
 	public void testThresholdTooBig()
 	{
 		// set threshold to more than 100
-		settings.setProperty(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "101");
+		settings.setProperty(ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, "101");
 
 		// test it doesn't throw any error
 		String profileBefore = testProjectModel.getRulesProfile().getName();
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite theshold being too big.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite theshold being too big.", profileBefore, profileAfter, false);
 	}
 
 	@Test
@@ -239,8 +266,26 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite the target language quality profile list being empty.", profileBefore,
-				profileAfter);
+		testOutcome("Projects profile has been changed despite the target language quality profile list being empty.", profileBefore, profileAfter,
+				false);
+	}
+
+	@Test
+	public void testSingleLanguageGlobalTargetLanguageQualityProfile()
+	{
+		RulesProfile[] javaRulesHierarchy = createRuleProfileHierarchy("javaqp", 12, 50);
+
+		String targetLanguageQualityProfiles = "java" + ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_ASSIGN
+				+ javaRulesHierarchy[javaRulesHierarchy.length - 1].getName() + ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_DELIM;
+
+		// set global setting for target language quality profile
+		settings.setProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, targetLanguageQualityProfiles);
+
+		runAnalysis();
+		String profileAfter = testProjectModel.getRulesProfile().getName();
+
+		testOutcome("Projects profile has not been changed to next profile in global language specific hierarchy.", profileAfter,
+				javaRulesHierarchy[0].getName(), true);
 	}
 
 	@Test
@@ -260,14 +305,31 @@ public class ProfileProgressionDecoratorTest
 				+ webRulesHierarchy[webRulesHierarchy.length - 1].getName();
 
 		// set global setting for target language quality profile
-		settings.setProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY,
-				javaRulesHierarchy[javaRulesHierarchy.length - 1].getName());
+		settings.setProperty(ProfileProgressionPlugin.GLOBAL_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, targetLanguageQualityProfiles);
 
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has not been changed to next profile in global language specific hierarchy.", profileAfter,
-				javaRulesHierarchy[0].getName());
+		testOutcome("Projects profile has not been changed to next profile in global language specific hierarchy.", profileAfter,
+				javaRulesHierarchy[0].getName(), true);
+	}
+
+	@Test
+	public void testSingleLanguageProjectTargetLanguageQualityProfile()
+	{
+		RulesProfile[] javaRulesHierarchy = createRuleProfileHierarchy("javaqp", 12, 50);
+
+		String targetLanguageQualityProfiles = "java" + ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_ASSIGN
+				+ javaRulesHierarchy[javaRulesHierarchy.length - 1].getName() + ProfileProgressionPlugin.TARGET_LANGUAGE_QUALITY_PROFILE_DELIM;
+
+		// set project setting for target language quality profile
+		settings.setProperty(ProfileProgressionPlugin.PROJECT_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, targetLanguageQualityProfiles);
+
+		runAnalysis();
+		String profileAfter = testProjectModel.getRulesProfile().getName();
+
+		testOutcome("Projects profile has not been changed to next profile in project language specific hierarchy.", profileAfter,
+				javaRulesHierarchy[0].getName(), true);
 	}
 
 	@Test
@@ -287,14 +349,13 @@ public class ProfileProgressionDecoratorTest
 				+ webRulesHierarchy[webRulesHierarchy.length - 1].getName();
 
 		// set project setting for target language quality profile
-		settings.setProperty(ProfileProgressionPlugin.PROJECT_TARGET_LANGUAGE_QUALITY_PROFILE_KEY,
-				javaRulesHierarchy[javaRulesHierarchy.length - 1].getName());
+		settings.setProperty(ProfileProgressionPlugin.PROJECT_TARGET_LANGUAGE_QUALITY_PROFILE_KEY, targetLanguageQualityProfiles);
 
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has not been changed to next profile in project language specific hierarchy.", profileAfter,
-				javaRulesHierarchy[0].getName());
+		testOutcome("Projects profile has not been changed to next profile in project language specific hierarchy.", profileAfter,
+				javaRulesHierarchy[0].getName(), true);
 	}
 
 	@Test
@@ -309,15 +370,15 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has not been changed to next profile in project specific hierarchy.", profileAfter,
-				projectRulesHierarchy[0].getName());
+		testOutcome("Projects profile has not been changed to next profile in project specific hierarchy.", profileAfter,
+				projectRulesHierarchy[0].getName(), true);
 	}
 
 	@Test
 	public void testProjectOverThreshold()
 	{
 		// add enough violations to be over threshold
-		int threshold = settings.getInt(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_THRESHOLD_KEY);
+		int threshold = settings.getInt(ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY);
 		List<ActiveRule> rules = testProjectModel.getRulesProfile().getActiveRules();
 		int numberOfRules = rules.size();
 		List<Violation> violations = decoratorContext.getViolations();
@@ -336,7 +397,7 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Projects profile has been changed despite the violation threshold not met.", profileBefore, profileAfter);
+		testOutcome("Projects profile has been changed despite the violation threshold not met.", profileBefore, profileAfter, false);
 	}
 
 	@Test
@@ -347,8 +408,66 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
+		// check profile has change
 		assertThat("Projects profile has not been changed despite meeting the violation threshold.", profileBefore, not(equalTo(profileAfter)));
-		Assert.assertSame("Projects new profile is not the next profile in pression list.", rulesProfiles[0].getName(), profileAfter);
+		testOutcome("Projects new profile is not the next profile in pression list.", rulesProfiles[0].getName(), profileAfter, true);
+	}
+
+	@Test
+	public void testProjectWithZeroViolations()
+	{
+		// remove all violations
+		violations.clear();
+
+		// test quality profile changes
+		String profileBefore = testProjectModel.getRulesProfile().getName();
+		runAnalysis();
+		String profileAfter = testProjectModel.getRulesProfile().getName();
+
+		// check profile has change
+		assertThat("Projects profile has not been changed despite meeting the violation threshold.", profileBefore, not(equalTo(profileAfter)));
+		testOutcome("Projects new profile is not the next profile in pression list.", rulesProfiles[0].getName(), profileAfter, true);
+	}
+
+	@Test
+	public void testProjectWithZeroRules()
+	{
+		// empty rules from profile
+		for (Iterator<ActiveRule> iterator = testProjectModel.getRulesProfile().getActiveRules().iterator(); iterator.hasNext();)
+		{
+			testProjectModel.getRulesProfile().removeActiveRule(iterator.next());
+		}
+
+		// test quality profile changes
+		String profileBefore = testProjectModel.getRulesProfile().getName();
+		runAnalysis();
+		String profileAfter = testProjectModel.getRulesProfile().getName();
+
+		// check profile has change
+		assertThat("Projects profile has not been changed despite meeting the violation threshold.", profileBefore, not(equalTo(profileAfter)));
+		testOutcome("Projects new profile is not the next profile in pression list.", rulesProfiles[0].getName(), profileAfter, true);
+	}
+
+	@Test
+	public void testProjectWithZeroViolationsAndRules()
+	{
+		// remove all violations
+		violations.clear();
+
+		// empty rules from profile
+		for (Iterator<ActiveRule> iterator = testProjectModel.getRulesProfile().getActiveRules().iterator(); iterator.hasNext();)
+		{
+			testProjectModel.getRulesProfile().removeActiveRule(iterator.next());
+		}
+
+		// test quality profile changes
+		String profileBefore = testProjectModel.getRulesProfile().getName();
+		runAnalysis();
+		String profileAfter = testProjectModel.getRulesProfile().getName();
+
+		// check profile has change
+		assertThat("Projects profile has not been changed despite meeting the violation threshold.", profileBefore, not(equalTo(profileAfter)));
+		testOutcome("Projects new profile is not the next profile in pression list.", rulesProfiles[0].getName(), profileAfter, true);
 	}
 
 	@Test
@@ -363,7 +482,7 @@ public class ProfileProgressionDecoratorTest
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
 		assertThat("Projects profile has not been changed despite meeting the violation threshold.", profileBefore, not(equalTo(profileAfter)));
-		Assert.assertEquals("Projects new profile is not the next profile in pression list.", rulesProfiles[1].getName(), profileAfter);
+		testOutcome("Projects new profile is not the next profile in pression list.", rulesProfiles[1].getName(), profileAfter, true);
 	}
 
 	@Test
@@ -379,7 +498,7 @@ public class ProfileProgressionDecoratorTest
 
 		assertThat("Project profile's parent has not been changed despite meeting the violation threshold.", parentProfileBefore,
 				not(equalTo(parentProfileAfter)));
-		Assert.assertEquals("Project profile's parent is not the next profile in pression list.", rulesProfiles[1].getName(), parentProfileAfter);
+		testOutcome("Project profile's parent is not the next profile in pression list.", rulesProfiles[1].getName(), parentProfileAfter, true);
 	}
 
 	@Test
@@ -399,8 +518,8 @@ public class ProfileProgressionDecoratorTest
 
 		assertThat("Project profile's grand-parent has not been changed despite meeting the violation threshold.", grandParentProfileBefore,
 				not(equalTo(grandParentProfileAfter)));
-		Assert.assertEquals("Project profile's grand-parent is not the next profile in pression list.", rulesProfiles[3].getName(),
-				grandParentProfileAfter);
+		testOutcome("Project profile's grand-parent is not the next profile in pression list.", rulesProfiles[3].getName(), grandParentProfileAfter,
+				true);
 	}
 
 	@Test
@@ -414,7 +533,8 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String profileAfter = testProjectModel.getRulesProfile().getName();
 
-		Assert.assertEquals("Project's profile has been changed despite being last managed profile.", profileBefore, profileAfter);
+		// check profile isn't changed
+		testOutcome("Project's profile has been changed despite being last managed profile.", profileBefore, profileAfter, false);
 	}
 
 	@Test
@@ -428,7 +548,7 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String parentProfileAfter = testProjectModel.getRulesProfile().getParentName();
 
-		Assert.assertEquals("Projects profile's parent has been changed despite being last managed profile.", parentProfileBefore, parentProfileAfter);
+		testOutcome("Projects profile's parent has been changed despite being last managed profile.", parentProfileBefore, parentProfileAfter, false);
 	}
 
 	@Test
@@ -446,8 +566,8 @@ public class ProfileProgressionDecoratorTest
 		runAnalysis();
 		String grandParentProfileAfter = testProjectParentProfile.getParentName();
 
-		Assert.assertEquals("Projects profile's grand-parent has been changed despite being last managed profile.", grandParentProfileBefore,
-				grandParentProfileAfter);
+		testOutcome("Projects profile's grand-parent has been changed despite being last managed profile.", grandParentProfileBefore,
+				grandParentProfileAfter, false);
 	}
 
 }
