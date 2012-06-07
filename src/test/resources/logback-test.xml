@@ -36,7 +36,7 @@
   <logger name="java.sql.ResultSet">
     <level value="WARN"/>
   </logger>
-  <logger name="net.maitland">
+  <logger name="org.sonar">
     <level value="DEBUG"/>
   </logger>
 

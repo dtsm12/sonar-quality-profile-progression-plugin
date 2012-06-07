@@ -28,58 +28,68 @@ import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Settings;
 import org.sonar.api.notifications.Notification;
 import org.sonar.api.notifications.NotificationDispatcher;
+import org.sonar.core.persistence.MyBatis;
 import org.sonar.core.properties.PropertiesDao;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
 
 // TODO write test class
 public class ProfileProgressedNotificationDispatcher extends NotificationDispatcher
 {
-	private PropertiesDao propertiesDao;
+	/*private PropertiesDao propertiesDao;*/
 	private Settings settings;
 
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	public ProfileProgressedNotificationDispatcher(Settings settings, PropertiesDao propertiesDao)
+	public ProfileProgressedNotificationDispatcher(Settings settings/*, MyBatis myBatis*/)
 	{
 		super();
 		this.settings = settings;
-		this.propertiesDao = propertiesDao;
+		/*this.propertiesDao = new PropertiesDao(myBatis);*/
 	}
 
 	@Override
 	public void dispatch(Notification notification, Context context)
 	{
-		if (StringUtils.equals(notification.getType(), ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY))
+		try
 		{
-			logger.debug("Dispatching {}", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
-
-			// add global setting users
-			String[] globalUsers = settings.getStringArray(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_NOTIFICATION_USER_KEY);
-			for (int i = 0; i < globalUsers.length; i++)
+			if (StringUtils.equals(notification.getType(), ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY))
 			{
-				logger.debug("Adding global recipient: {}", globalUsers[i]);
-				context.addUser(globalUsers[i]);
-			}
+				logger.debug("Dispatching {}", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
 
-			// add project setting users
-			String projectUserString = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NOTIFICATION_USERS_KEY);
-			String[] projectUsers = getStringArray(projectUserString);
-			for (int i = 0; i < projectUsers.length; i++)
-			{
-				logger.debug("Adding project recipient: {}", projectUsers[i]);
-				context.addUser(projectUsers[i]);
-			}
+				// add global setting users
+				String[] globalUsers = settings.getStringArray(ProfileProgressionPlugin.GLOBAL_QUALITY_PROFILE_CHANGE_NOTIFICATION_USER_KEY);
+				for (int i = 0; i < globalUsers.length; i++)
+				{
+					logger.debug("Adding global recipient: {}", globalUsers[i]);
+					context.addUser(globalUsers[i]);
+				}
 
-			// add user's who have this project as one of their favourites
-			Integer projectId = Integer.parseInt(notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY));
-			List<String> userLogins = propertiesDao.findUserIdsForFavouriteResource(projectId);
-			for (String userLogin : userLogins)
-			{
-				logger.debug("Adding favourite recipient: {}", userLogin);
-				context.addUser(userLogin);
-			}
+				// add project setting users
+				String projectUserString = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NOTIFICATION_USERS_KEY);
+				String[] projectUsers = getStringArray(projectUserString);
+				for (int i = 0; i < projectUsers.length; i++)
+				{
+					logger.debug("Adding project recipient: {}", projectUsers[i]);
+					context.addUser(projectUsers[i]);
+				}
 
-			logger.debug("Dispatched {}", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
+
+				// add user's who have this project as one of their favourites - unable to get this working; just hangs
+/*				Integer projectId = Integer.parseInt(notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY));
+				List<String> userLogins = propertiesDao.findUserIdsForFavouriteResource(projectId);
+				for (String userLogin : userLogins)
+				{
+					logger.debug("Adding favourite recipient: {}", userLogin);
+					context.addUser(userLogin);
+				}*/
+
+				logger.debug("Dispatched {}", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
+			}
+		}
+		catch (RuntimeException e)
+		{
+			logger.error("Error dispatching " + notification.getType(), e);
+			throw e;
 		}
 	}
 

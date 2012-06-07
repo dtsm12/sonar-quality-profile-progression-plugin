@@ -19,6 +19,9 @@
  */
 package org.sonar.api.database;
 
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,11 +31,15 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.FlushModeType;
 import javax.persistence.LockModeType;
 import javax.persistence.Query;
+import javax.persistence.TemporalType;
+
+import org.sonar.api.profiles.RulesProfile;
 
 public class MockDatabaseSession extends DatabaseSession
 {
 	Map<EntityKey, Object> entities = new HashMap<EntityKey, Object>();
-	
+	Map<Class, Query> queryResults = new HashMap<Class, Query>();
+
 	EntityManager entityManager = new MockEntityManager();
 
 	public MockDatabaseSession()
@@ -161,22 +168,25 @@ public class MockDatabaseSession extends DatabaseSession
 	@Override
 	public <T> T getSingleResult(Class<T> entityClass, Object... criterias)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return getEntityManager().find(entityClass, criterias);
 	}
 
 	@Override
 	public <T> List<T> getResults(Class<T> entityClass, Object... criterias)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return getResults(entityClass);
 	}
 
 	@Override
 	public <T> List<T> getResults(Class<T> entityClass)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		List<T> results = Collections.EMPTY_LIST;
+		Query query = queryResults.get(entityClass);
+		if (query != null)
+		{
+			results = (List<T>) query.getResultList();
+		}
+		return results;
 	}
 
 	public class EntityKey
@@ -252,14 +262,14 @@ public class MockDatabaseSession extends DatabaseSession
 			return MockDatabaseSession.this;
 		}
 	}
-	
+
 	private class MockEntityManager implements EntityManager
 	{
 
 		public void persist(Object entity)
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public <T> T merge(T entity)
@@ -271,7 +281,7 @@ public class MockDatabaseSession extends DatabaseSession
 		public void remove(Object entity)
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public <T> T find(Class<T> entityClass, Object primaryKey)
@@ -289,13 +299,13 @@ public class MockDatabaseSession extends DatabaseSession
 		public void flush()
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setFlushMode(FlushModeType flushMode)
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public FlushModeType getFlushMode()
@@ -307,19 +317,19 @@ public class MockDatabaseSession extends DatabaseSession
 		public void lock(Object entity, LockModeType lockMode)
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void refresh(Object entity)
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void clear()
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public boolean contains(Object entity)
@@ -361,7 +371,7 @@ public class MockDatabaseSession extends DatabaseSession
 		public void joinTransaction()
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public Object getDelegate()
@@ -373,7 +383,7 @@ public class MockDatabaseSession extends DatabaseSession
 		public void close()
 		{
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public boolean isOpen()
@@ -387,12 +397,106 @@ public class MockDatabaseSession extends DatabaseSession
 			// TODO Auto-generated method stub
 			return null;
 		}
-		
+
+	}
+
+	private class MockQuery implements Query
+	{
+		List results;
+
+		public MockQuery(List results)
+		{
+			super();
+			this.results = results;
+		}
+
+		public List getResultList()
+		{
+			return results;
+		}
+
+		public Object getSingleResult()
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public int executeUpdate()
+		{
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		public Query setMaxResults(int maxResult)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setFirstResult(int startPosition)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setHint(String hintName, Object value)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(String name, Object value)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(String name, Date value, TemporalType temporalType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(String name, Calendar value, TemporalType temporalType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(int position, Object value)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(int position, Date value, TemporalType temporalType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setParameter(int position, Calendar value, TemporalType temporalType)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Query setFlushMode(FlushModeType flushMode)
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
 	}
 
 	public void setEntities(Map<EntityKey, Object> entities)
 	{
 		this.entities = entities;
+	}
+
+	public void addMockQueryResults(Class queryClass, List results)
+	{
+		queryResults.put(queryClass, new MockQuery(results));
 	}
 
 }

@@ -77,9 +77,10 @@ public class ProfileProgressionPlugin extends SonarPlugin
 	public static final String NOTIFICATION_PROJECT_ID_KEY = "org.sonar.plugins.qualityprofile.progression.notification.project.id";
 	public static final String NOTIFICATION_PROJECT_KEY_KEY = "org.sonar.plugins.qualityprofile.progression.notification.project.key";
 	public static final String NOTIFICATION_PROJECT_VIOLATIONS_KEY = "org.sonar.plugins.qualityprofile.progression.notification.project.violations";
-	public static final String NOTIFICATION_PROJECT_NOTIFICATION_USERS_KEY = "org.sonar.plugins.qualityprofile.progression.notification.project.violations";
+	public static final String NOTIFICATION_PROJECT_NOTIFICATION_USERS_KEY = "org.sonar.plugins.qualityprofile.progression.notification.users";
 	public static final String NOTIFICATION_ANALYSIS_VERSION_KEY = "org.sonar.plugins.qualityprofile.progression.notification.analysis.version";
 	public static final String NOTIFICATION_VIOLAIONS_THRESHOLD_KEY = "org.sonar.plugins.qualityprofile.progression.notification.violations.threshold";
+	public static final String NOTIFICATION_PROJECT_PROGRESSED_KEY = "org.sonar.plugins.qualityprofile.progression.notification.project.progressed";
 	public static final String NOTIFICATION_MESSAGE_KEY = "org.sonar.plugins.qualityprofile.progression.notification.message";
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

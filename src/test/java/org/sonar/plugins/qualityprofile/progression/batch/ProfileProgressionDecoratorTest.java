@@ -19,10 +19,17 @@
  */
 package org.sonar.plugins.qualityprofile.progression.batch;
 
-import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
-import org.sonar.plugins.qualityprofile.progression.batch.ProfileProgressionDecorator;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.text.StringContains.containsString;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -31,14 +38,7 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.any;
-
+import org.mockito.ArgumentCaptor;
 import org.sonar.api.batch.DecoratorContext;
 import org.sonar.api.batch.MockDecoratorContext;
 import org.sonar.api.config.Settings;
@@ -55,6 +55,7 @@ import org.sonar.api.rules.Rule;
 import org.sonar.api.rules.RulePriority;
 import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.MockProfilesDao;
+import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
 
 public class ProfileProgressionDecoratorTest
 {
@@ -84,16 +85,22 @@ public class ProfileProgressionDecoratorTest
 		Integer projectId = new Integer(123);
 		testProject = new Project("test.project.key");
 		testProject.setId(projectId);
+		testProject.setName("testProject");
 		testProject.setLanguage(Java.INSTANCE);
 
 		// create test project entity
 		testProjectModel = new ResourceModel();
 		testProjectModel.setId(projectId);
+		testProjectModel.setKey(testProject.getKey());
+		testProjectModel.setEnabled(Boolean.TRUE);
+		testProjectModel.setRootId(projectId);
+		testProjectModel.setLanguageKey(Java.KEY);
 		testProjectModel.setRulesProfile(createRulesProfile("testProjectProfile", numberOfRules));
 
 		// add project to db objects
 		MockDatabaseSession.EntityKey projectKey = databaseSession.new EntityKey(ResourceModel.class, projectId);
 		entities.put(projectKey, testProjectModel);
+		databaseSession.addMockQueryResults(ResourceModel.class, Arrays.asList(testProjectModel));
 
 		// define test threshold
 		int violationThreshold = 10;
@@ -499,6 +506,48 @@ public class ProfileProgressionDecoratorTest
 		assertThat("Project profile's parent has not been changed despite meeting the violation threshold.", parentProfileBefore,
 				not(equalTo(parentProfileAfter)));
 		testOutcome("Project profile's parent is not the next profile in pression list.", rulesProfiles[1].getName(), parentProfileAfter, true);
+	}
+
+	@Test
+	public void testProjectWithParentManagedProfileUsedByAnotherProject()
+	{
+		// make current test profile child of managed one
+		testProjectModel.getRulesProfile().setParentName(rulesProfiles[0].getName());
+
+		// create another test project entity
+		Integer project2Id = new Integer(5678);
+		ResourceModel testProjectModel2 = new ResourceModel();
+		testProjectModel2.setId(project2Id);
+		testProjectModel2.setKey("test.project2.key");
+		testProjectModel2.setEnabled(Boolean.TRUE);
+		testProjectModel2.setRootId(project2Id);
+		testProjectModel2.setLanguageKey(Java.KEY);
+		testProjectModel2.setRulesProfile(testProjectModel.getRulesProfile());
+
+		// add projects to db objects
+		MockDatabaseSession.EntityKey projectKey = databaseSession.new EntityKey(ResourceModel.class, project2Id);
+		entities.put(projectKey, testProjectModel2);
+		databaseSession.addMockQueryResults(ResourceModel.class, Arrays.asList(testProjectModel, testProjectModel2));
+
+		// test quality profile changes
+		String parentProfileBefore = testProjectModel.getRulesProfile().getParentName();
+		runAnalysis();
+		String parentProfileAfter = testProjectModel.getRulesProfile().getParentName();
+
+		testOutcome("Project profile's parent has been changed despite being used by another project.", parentProfileBefore, parentProfileAfter, true);
+
+		ArgumentCaptor<Notification> argument = ArgumentCaptor.forClass(Notification.class);
+		verify(notificationManager).scheduleForSending(argument.capture());
+		Notification notification = argument.getValue();
+
+		// check notification has project info
+		assertThat("Notification doesn't contain project name", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY), equalTo(testProjectModel.getName()));
+		assertThat("Notification doesn't contain project id", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY),
+				equalTo(String.valueOf(testProjectModel.getId())));
+		assertThat("Notification doesn't contain project key", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY), equalTo(testProjectModel.getKey()));
+
+		// check that message mentioned other project
+		assertThat("Notification message doesn't contain key of project blocking progression", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY), containsString(testProjectModel2.getKey()));
 	}
 
 	@Test

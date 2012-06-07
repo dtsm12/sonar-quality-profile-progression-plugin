@@ -21,7 +21,9 @@ package org.sonar.plugins.qualityprofile.progression.batch;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -43,8 +45,8 @@ import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.ProfilesDao;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionException;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
+import org.sonar.plugins.qualityprofile.progression.ProjectProfileProgressionStatus;
 
-//TODO before changing profile's parent check it, and its descendants, are not used by another project
 public class ProfileProgressionDecorator implements Decorator
 {
 	private DatabaseSession session;
@@ -52,6 +54,7 @@ public class ProfileProgressionDecorator implements Decorator
 	private Settings settings;
 	private NotificationManager notificationManager;
 	private ProfilesDao profilesDao;
+	private QualityProfileProjectDao qualityProfileProjectDao;
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public ProfileProgressionDecorator(DatabaseSession session, RulesProfile profile, Settings settings, NotificationManager notificationManager)
@@ -62,6 +65,7 @@ public class ProfileProgressionDecorator implements Decorator
 		this.settings = settings;
 		this.notificationManager = notificationManager;
 		this.profilesDao = new ProfilesDao(session);
+		this.qualityProfileProjectDao = new QualityProfileProjectDao(session);
 	}
 
 	public boolean shouldExecuteOnProject(Project project)
@@ -108,6 +112,7 @@ public class ProfileProgressionDecorator implements Decorator
 				{
 					logger.info("{} project's % violations ({}) lower than threshold ({}).", new Object[] { resource.getEffectiveKey(),
 							projectViolationPercentage, violationThreshold });
+
 					progressQualityProfile(project, profileNameArray, projectViolationPercentage, violationThreshold);
 				}
 				else
@@ -197,83 +202,135 @@ public class ProfileProgressionDecorator implements Decorator
 			String nextProfileName = profileNameArray[nextProfileIndex];
 			logger.debug("Next profile name is {}.", nextProfileName);
 
-			String notificationMessage = "";
+			// build project resource model
+			ResourceModel projectModel = session.getEntityManager().find(ResourceModel.class, project.getId());
+
+			if (projectModel == null)
+			{
+				throw new ProfileProgressionException("Unable to find project '" + project.getKey() + "' in database with id: " + project.getId());
+			}
+
+			// create status class
+			ProjectProfileProgressionStatus profileStatus = new ProjectProfileProgressionStatus();
+			profileStatus.setAnalysisVersion(project.getAnalysisVersion());
+			profileStatus.setNextProfileName(nextProfileName);
+			profileStatus.setProfileToUpdate(profileToUpdate);
+			profileStatus.setProject(projectModel);
+			profileStatus.setProjectViolationPercentage(projectViolationPercentage);
 
 			if (profileToUpdate == null)
 			{
-				notificationMessage = updateProjectsProfile(project, nextProfileName);
+				updateProjectsProfile(profileStatus);
 			}
 			else
 			{
-				notificationMessage = updateProfilesParent(profileToUpdate, nextProfileName);
+				updateProfilesParent(profileStatus);
 			}
 
-			sendNotification(project, notificationMessage, projectViolationPercentage, violationThreshold);
+			sendNotification(profileStatus);
 		}
 	}
 
-	protected void sendNotification(Project project, String notificationMessage, int projectViolationPercentage, int violationThreshold)
+	protected void sendNotification(ProjectProfileProgressionStatus profileStatus)
 	{
 		Notification notification = new Notification(ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
-		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY, project.getName());
-		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY, project.getKey());
-		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY, String.valueOf(project.getId()));
-		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_ANALYSIS_VERSION_KEY, project.getAnalysisVersion());
-		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY, notificationMessage);
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY, profileStatus.getProject().getName());
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY, profileStatus.getProject().getKey());
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY, String.valueOf(profileStatus.getProject().getId()));
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_ANALYSIS_VERSION_KEY, profileStatus.getAnalysisVersion());
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY, profileStatus.getNotificationMessage());
 		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NOTIFICATION_USERS_KEY,
 				settings.getString(ProfileProgressionPlugin.PROJECT_QUALITY_PROFILE_CHANGE_NOTIFICATION_USER_KEY));
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_PROGRESSED_KEY,
+				String.valueOf(profileStatus.profileShouldBeProgressed()));
+		notification.setFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_VIOLATIONS_KEY,
+				String.valueOf(profileStatus.getProjectViolationPercentage()));
 
-		logger.debug("Sending profile progression notification for project {}", project.getName());
+		logger.info("Sending profile progression notification for project {}", profileStatus.getProject().getName());
 
 		notificationManager.scheduleForSending(notification);
 	}
 
-	protected String updateProfilesParent(RulesProfile profileToUpdate, String newParentProfileName)
+	protected void updateProfilesParent(ProjectProfileProgressionStatus profileStatus) throws ProfileProgressionException
 	{
-		logger.info("{} quality profile's parent is managed by {}", profileToUpdate.getName(), this.getClass().getSimpleName());
-		profileToUpdate.setParentName(newParentProfileName);
-		session.save(profileToUpdate);
-		session.commit();
-		String message = String.format("Progressed %1$s quality profile's parent to %2$s", profileToUpdate.getName(), newParentProfileName);
-		logger.info(message);
-		return message;
+		checkForMultipleProjectUsage(profileStatus);
+
+		if (profileStatus.profileShouldBeProgressed())
+		{
+			logger.info("{} quality profile's parent is managed by {}", profileStatus.getProfileToUpdate().getName(), this.getClass().getSimpleName());
+			profileStatus.getProfileToUpdate().setParentName(profileStatus.getNextProfileName());
+			session.save(profileStatus.getProfileToUpdate());
+			session.commit();
+			String message = String.format("Progressed %1$s quality profile's parent to %2$s", profileStatus.getProfileToUpdate().getName(),
+					profileStatus.getNextProfileName());
+			logger.info(message);
+			profileStatus.setNotificationMessage(message);
+		}
 	}
 
-	protected String updateProjectsProfile(Resource resource, String newProfileName) throws ProfileProgressionException
+	protected void checkForMultipleProjectUsage(ProjectProfileProgressionStatus profileStatus) throws ProfileProgressionException
+	{
+		Set<ResourceModel> otherProjects = qualityProfileProjectDao.getAllProjectsUsingQualityProfile(profileStatus.getProfileToUpdate());
+
+		if (otherProjects.size() > 1)
+		{
+			// prevent profile progression
+			profileStatus.setProfileShouldBeProgressed(false);
+
+			// set notification message
+			StringBuilder sb = new StringBuilder();
+			sb.append(profileStatus.getProfileToUpdate().getName());
+			sb.append(" quality profile, &/or its children, are used by projects other than ");
+			sb.append(profileStatus.getProject().getKey());
+			sb.append(".\nQuality profile for ");
+			sb.append(profileStatus.getProject().getKey());
+			sb.append(" will not be progressed.");
+			sb.append("\nProjects also using the ");
+			sb.append(profileStatus.getProfileToUpdate().getName());
+			sb.append(" quality profile, &/or its children: ");
+
+			for (Iterator<ResourceModel> iterator = otherProjects.iterator(); iterator.hasNext();)
+			{
+				ResourceModel otherProject = iterator.next();
+				if (profileStatus.getProject().equals(otherProject) == false)
+				{
+					sb.append(otherProject.getKey());
+					sb.append("\n ");
+				}
+			}
+
+			logger.debug(sb.toString());
+
+			profileStatus.setNotificationMessage(sb.toString());
+		}
+	}
+
+	protected void updateProjectsProfile(ProjectProfileProgressionStatus profileStatus) throws ProfileProgressionException
 	{
 
-		// build project resource model
-		ResourceModel resourceModel = session.getEntityManager().find(ResourceModel.class, resource.getId());
+		ResourceModel project = profileStatus.getProject();
 
-		if (resourceModel == null)
+		// set project's quality profile to next
+		// one
+		RulesProfile nextProfile = profilesDao.getProfile(project.getLanguageKey(), profileStatus.getNextProfileName());
+
+		if (nextProfile == null)
 		{
-			throw new ProfileProgressionException("Unable to find project '" + resource.getEffectiveKey() + "' in database with id: "
-					+ resource.getId());
+			throw new ProfileProgressionException("Unable to find profile '" + profileStatus.getNextProfileName() + "' for language "
+					+ project.getLanguageKey() + "'.");
 		}
 		else
 		{
-			// set project's quality profile to next
-			// one
-			RulesProfile nextProfile = profilesDao.getProfile(resource.getLanguage().getKey(), newProfileName);
+			project.setRulesProfile(nextProfile);
 
-			if (nextProfile == null)
-			{
-				throw new ProfileProgressionException("Unable to find profile '" + newProfileName + "' for language "
-						+ resource.getLanguage().getName() + "'.");
-			}
-			else
-			{
-				resourceModel.setRulesProfile(nextProfile);
-
-				// save project change
-				session.save(resourceModel);
-				session.commit();
-			}
+			// save project change
+			session.save(project);
+			session.commit();
 		}
 
-		String message = String.format("Progressed %1$s project's profile to %2$s", resource.getEffectiveKey(), newProfileName);
+		String message = String.format("Progressed %1$s project's profile to %2$s", project.getKey(), profileStatus.getNextProfileName());
 		logger.info(message);
-		return message;
+		profileStatus.setNotificationMessage(message);
 	}
 
 	protected int getProjectsViolationPercentage(DecoratorContext context)

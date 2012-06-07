@@ -22,6 +22,7 @@ package org.sonar.plugins.qualityprofile.progression.server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.notifications.Notification;
+import org.sonar.plugins.emailnotifications.EmailConfiguration;
 import org.sonar.plugins.emailnotifications.api.EmailMessage;
 import org.sonar.plugins.emailnotifications.api.EmailTemplate;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
@@ -30,39 +31,56 @@ public class ProfileProgressedEmailTemplate extends EmailTemplate
 {
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	String subjectTemplate1 = "%1$s quality profile has been progressed";
-	String messageTemplate = "Analysis of %1$s, version %2$s, has reached %3$s'%' violations which is under the quality profile progression threshold (%4$s'%').\n";
+	String subjectTemplate1 = "%s quality profile has %sbeen progressed";
+	String messageTemplate = "Analysis of %s, version %s, has reached %s%% violations.\n\n";
+
+	private EmailConfiguration configuration;
+
+	public ProfileProgressedEmailTemplate(/* EmailConfiguration configuration */)
+	{
+		// this.configuration = configuration;
+	}
 
 	@Override
 	public EmailMessage format(Notification notification)
 	{
-		if (ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY.equals(notification.getType()) == false)
+		EmailMessage emailMessage = null;
+
+		if (ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY.equals(notification.getType()))
 		{
-			return null;
+			logger.debug("Preparing {} email message", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
+
+			emailMessage = new EmailMessage();
+
+			String projectName = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY);
+			String projectId = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY);
+			String projectKey = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY);
+			String percentageViolations = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_VIOLATIONS_KEY);
+			String version = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_ANALYSIS_VERSION_KEY);
+			String msg = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY);
+			boolean profileProgressed = Boolean.valueOf(notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_PROGRESSED_KEY));
+
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format(messageTemplate, projectKey, version, percentageViolations));
+			sb.append(msg);
+			// appendFooter(sb, projectId);
+
+			emailMessage.setMessageId(ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY + "/" + projectId);
+			emailMessage.setSubject(String.format(subjectTemplate1, projectName, (profileProgressed ? "" : "not ")));
+			emailMessage.setMessage(sb.toString());
+
+			logger.debug("Prepared {} email message", notification.getType());
+			logger.debug("Message id: {}", emailMessage.getMessageId());
+			logger.debug("Message subject: {}", emailMessage.getSubject());
+			logger.debug("Message body: {}", emailMessage.getMessage());
 		}
 
-		logger.debug("Preparing {} email message", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
-
-		EmailMessage emailMessage = new EmailMessage();
-
-		String projectName = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY);
-		String projectId = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY);
-		String projectKey = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY);
-		String percentageViolations = notification
-				.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_VIOLATIONS_KEY);
-		String version = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_ANALYSIS_VERSION_KEY);
-		String violationThreshold = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_VIOLAIONS_THRESHOLD_KEY);
-		String msg = notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY);
-
-		emailMessage.setMessageId(ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY + "/" + projectId);
-		emailMessage.setSubject(String.format(subjectTemplate1, projectName));
-		emailMessage.setMessage(String.format(messageTemplate, projectKey, version, percentageViolations, violationThreshold) + msg);
-
-		logger.debug("Prepared {} email message", ProfileProgressionPlugin.NOTIFICATION_TYPE_KEY);
-		logger.debug("Message id: {}", emailMessage.getMessageId());
-		logger.debug("Message subject: {}", emailMessage.getSubject());
-		logger.debug("Message body: {}", emailMessage.getMessage());
-
 		return emailMessage;
+	}
+
+	private void appendFooter(StringBuilder sb, String projectId)
+	{
+		sb.append("\n").append("See it in Sonar: ").append(configuration.getServerBaseURL()).append("http://localhost:9000/dashboard/index/")
+				.append(projectId).append("/\n");
 	}
 }
