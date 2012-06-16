@@ -17,18 +17,46 @@
  * License along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
  */
+/*
+F * Quality Profile Progression
+ * Copyright (C) 2012 David T S Maitland
+ * david.ts.maitland@gmail.com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
+ */
 package org.sonar.plugins.qualityprofile.progression;
 
-import org.sonar.plugins.qualityprofile.progression.batch.ProfileProgressionDecorator;
-import org.sonar.plugins.qualityprofile.progression.server.ProfileProgressedEmailTemplate;
-import org.sonar.plugins.qualityprofile.progression.server.ProfileProgressedNotificationDispatcher;
-
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.sonar.api.Properties;
 import org.sonar.api.Property;
 import org.sonar.api.SonarPlugin;
+import org.sonar.plugins.qualityprofile.progression.batch.ProfileProgressionDecorator;
+import org.sonar.plugins.qualityprofile.progression.profile.ProfileRulesInheritanceUpdater;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.FindbugsProfileImporter;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsProfile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet1Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet2Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet3Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet4Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet5Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet6Profile;
+import org.sonar.plugins.qualityprofile.progression.profile.findbugs.SonarWayWithFindbugsSubSetFindbugsSet7Profile;
+import org.sonar.plugins.qualityprofile.progression.server.ProfileProgressedEmailTemplate;
+import org.sonar.plugins.qualityprofile.progression.server.ProfileProgressedNotificationDispatcher;
 
 @Properties({
 		@Property(key = ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_KEY, name = ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_NAME, description = ProfileProgressionPlugin.QUALITY_PROFILE_CHANGE_THRESHOLD_DESC, defaultValue = "10", project = true),
@@ -86,7 +114,21 @@ public class ProfileProgressionPlugin extends SonarPlugin
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public List getExtensions()
 	{
-		return Arrays.asList(ProfileProgressionDecorator.class, ProfileProgressedEmailTemplate.class, ProfileProgressedNotificationDispatcher.class);
+		List<Class> extensions = new ArrayList<Class>();
+		extensions.add(ProfileProgressionDecorator.class);
+		extensions.add(ProfileProgressedEmailTemplate.class);
+		extensions.add(ProfileProgressedNotificationDispatcher.class);
+		extensions.add(FindbugsProfileImporter.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet1Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet2Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet3Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet4Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet5Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet6Profile.class);
+		extensions.add(SonarWayWithFindbugsSubSetFindbugsSet7Profile.class);
+		extensions.add(ProfileRulesInheritanceUpdater.class);
+
+		return extensions;
 	}
 
 }

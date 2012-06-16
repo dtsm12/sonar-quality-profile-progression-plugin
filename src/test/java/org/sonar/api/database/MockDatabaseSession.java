@@ -161,14 +161,23 @@ public class MockDatabaseSession extends DatabaseSession
 	@Override
 	public <T> T getEntity(Class<T> entityClass, Object id)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return getEntityManager().find(entityClass, id);
 	}
 
 	@Override
 	public <T> T getSingleResult(Class<T> entityClass, Object... criterias)
 	{
-		return getEntityManager().find(entityClass, criterias);
+		Object newCriteria = criterias;
+
+		if (entityClass.isAssignableFrom(RulesProfile.class) && criterias.length >= 4)
+		{
+			if ("language".equals(criterias[0]) && "name".equals(criterias[2]))
+			{
+				newCriteria = String.valueOf(criterias[1]) + String.valueOf(criterias[3]);
+			}
+		}
+
+		return getEntityManager().find(entityClass, newCriteria);
 	}
 
 	@Override
@@ -286,6 +295,7 @@ public class MockDatabaseSession extends DatabaseSession
 
 		public <T> T find(Class<T> entityClass, Object primaryKey)
 		{
+
 			EntityKey key = new EntityKey(entityClass, primaryKey);
 			return (T) entities.get(key);
 		}

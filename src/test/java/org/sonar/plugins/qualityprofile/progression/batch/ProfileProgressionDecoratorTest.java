@@ -62,6 +62,7 @@ public class ProfileProgressionDecoratorTest
 	MockDatabaseSession databaseSession;
 	Settings settings;
 	NotificationManager notificationManager = mock(NotificationManager.class);
+	int rulesProfileSequence = 1;
 	RulesProfile[] rulesProfiles;
 	Project testProject;
 	ResourceModel testProjectModel;
@@ -145,7 +146,7 @@ public class ProfileProgressionDecoratorTest
 	{
 
 		String languageKey = Java.KEY;
-		RulesProfile rulesProfile = RulesProfile.create(profileName, languageKey);
+		RulesProfile rulesProfile = new TestRulesProfile(profileName, languageKey, rulesProfileSequence++);
 
 		List<ActiveRule> activeRules = new ArrayList<ActiveRule>();
 		for (int j = 0; j < numberOfRules; j++)
@@ -155,8 +156,12 @@ public class ProfileProgressionDecoratorTest
 		rulesProfile.setActiveRules(activeRules);
 
 		// add to db objects
-		MockDatabaseSession.EntityKey profileKey = databaseSession.new EntityKey(RulesProfile.class, languageKey + profileName);
-		entities.put(profileKey, rulesProfile);
+		MockDatabaseSession.EntityKey profileKey1 = databaseSession.new EntityKey(RulesProfile.class, languageKey + profileName);
+		entities.put(profileKey1, rulesProfile);
+
+		// add to db objects
+		MockDatabaseSession.EntityKey profileKey2 = databaseSession.new EntityKey(RulesProfile.class, rulesProfile.getId());
+		entities.put(profileKey2, rulesProfile);
 
 		return rulesProfile;
 	}
@@ -541,13 +546,16 @@ public class ProfileProgressionDecoratorTest
 		Notification notification = argument.getValue();
 
 		// check notification has project info
-		assertThat("Notification doesn't contain project name", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY), equalTo(testProjectModel.getName()));
+		assertThat("Notification doesn't contain project name", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_NAME_KEY),
+				equalTo(testProjectModel.getName()));
 		assertThat("Notification doesn't contain project id", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_ID_KEY),
 				equalTo(String.valueOf(testProjectModel.getId())));
-		assertThat("Notification doesn't contain project key", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY), equalTo(testProjectModel.getKey()));
+		assertThat("Notification doesn't contain project key", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_PROJECT_KEY_KEY),
+				equalTo(testProjectModel.getKey()));
 
 		// check that message mentioned other project
-		assertThat("Notification message doesn't contain key of project blocking progression", notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY), containsString(testProjectModel2.getKey()));
+		assertThat("Notification message doesn't contain key of project blocking progression",
+				notification.getFieldValue(ProfileProgressionPlugin.NOTIFICATION_MESSAGE_KEY), containsString(testProjectModel2.getKey()));
 	}
 
 	@Test

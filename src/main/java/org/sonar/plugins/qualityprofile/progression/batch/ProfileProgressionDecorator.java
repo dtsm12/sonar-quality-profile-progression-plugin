@@ -43,9 +43,11 @@ import org.sonar.api.resources.Scopes;
 import org.sonar.api.rules.ActiveRule;
 import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.ProfilesDao;
+import org.sonar.jpa.dao.RulesDao;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionException;
 import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
 import org.sonar.plugins.qualityprofile.progression.ProjectProfileProgressionStatus;
+import org.sonar.plugins.qualityprofile.progression.profile.ProfilesManager;
 
 public class ProfileProgressionDecorator implements Decorator
 {
@@ -54,6 +56,8 @@ public class ProfileProgressionDecorator implements Decorator
 	private Settings settings;
 	private NotificationManager notificationManager;
 	private ProfilesDao profilesDao;
+	private RulesDao rulesDao;
+	private ProfilesManager profilesManager;
 	private QualityProfileProjectDao qualityProfileProjectDao;
 	Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -64,6 +68,8 @@ public class ProfileProgressionDecorator implements Decorator
 		this.profile = profile;
 		this.settings = settings;
 		this.notificationManager = notificationManager;
+		this.rulesDao = new RulesDao(session);
+		this.profilesManager = new ProfilesManager(session, rulesDao);
 		this.profilesDao = new ProfilesDao(session);
 		this.qualityProfileProjectDao = new QualityProfileProjectDao(session);
 	}
@@ -258,12 +264,13 @@ public class ProfileProgressionDecorator implements Decorator
 		if (profileStatus.profileShouldBeProgressed())
 		{
 			logger.info("{} quality profile's parent is managed by {}", profileStatus.getProfileToUpdate().getName(), this.getClass().getSimpleName());
-			profileStatus.getProfileToUpdate().setParentName(profileStatus.getNextProfileName());
-			session.save(profileStatus.getProfileToUpdate());
-			session.commit();
+
+			profilesManager.changeParentProfile(profileStatus.getProfileToUpdate().getId(), profileStatus.getNextProfileName(), "admin");
+
 			String message = String.format("Progressed %1$s quality profile's parent to %2$s", profileStatus.getProfileToUpdate().getName(),
 					profileStatus.getNextProfileName());
 			logger.info(message);
+
 			profileStatus.setNotificationMessage(message);
 		}
 	}
