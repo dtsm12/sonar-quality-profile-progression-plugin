@@ -19,6 +19,7 @@
  */
 package org.sonar.plugins.qualityprofile.progression.profile.findbugs;
 
+import org.sonar.plugins.findbugs.FindbugsProfileImporter;
 import org.sonar.plugins.qualityprofile.progression.profile.SonarWayWithFindbugsSubSetProfile;
 
 public class SonarWayWithFindbugsSubSetFindbugsProfile extends SonarWayWithFindbugsSubSetProfile
