@@ -1,0 +1,44 @@
+<module name="Checker">
+<module name="SuppressionCommentFilter"/>
+<module name="TreeWalker">
+<module name="FileContentsHolder"/>
+
+<module name="SimplifyBooleanExpression">
+<property name="severity" value="warning"/>
+</module>
+<module name="BooleanExpressionComplexity">
+<property name="severity" value="warning"/>
+</module>
+<module name="CyclomaticComplexity">
+<property name="severity" value="warning"/>
+<property name="max" value="10"/>
+</module>
+<module name="EmptyStatement">
+<property name="severity" value="info"/>
+</module>
+<module name="MagicNumber">
+<property name="severity" value="info"/>
+<property name="ignoreHashCodeMethod" value="false"/>
+<property name="ignoreAnnotation" value="false"/>
+</module>
+<module name="RedundantThrows">
+<property name="severity" value="info"/>
+<property name="suppressLoadErrors" value="true"/>
+</module>
+<module name="ModifierOrder">
+<property name="severity" value="info"/>
+</module>
+<module name="RedundantModifier">
+<property name="severity" value="info"/>
+</module>
+<module name="ConstantName">
+<property name="severity" value="info"/>
+<property name="format" value="^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+<property name="applyToPublic" value="true"/>
+<property name="applyToProtected" value="true"/>
+<property name="applyToPackage" value="true"/>
+<property name="applyToPrivate" value="true"/>
+</module>
+
+</module>
+</module>

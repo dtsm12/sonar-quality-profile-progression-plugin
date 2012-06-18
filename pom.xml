@@ -9,7 +9,7 @@
     <relativePath>../parent</relativePath>
   </parent>
 
-  <artifactId>sonar-profile-progression-plugin</artifactId>
+  <artifactId>sonar-quality-profile-progression-plugin</artifactId>
   <packaging>sonar-plugin</packaging>
   <version>1.0-SNAPSHOT</version>
   <name>Quality Profile Progression</name>
@@ -42,7 +42,7 @@
         <artifactId>sonar-packaging-maven-plugin</artifactId>
         <extensions>true</extensions>
         <configuration>
-          <pluginClass>org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin</pluginClass>
+          <pluginClass>org.sonar.plugins.qualityprofileprogression.ProfileProgressionPlugin</pluginClass>
         </configuration>
       </plugin>
       <plugin>
@@ -104,6 +104,21 @@
     <dependency>
     	<groupId>org.codehaus.sonar.plugins</groupId>
     	<artifactId>sonar-findbugs-plugin</artifactId>
+    	<version>2.14</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.codehaus.sonar.plugins</groupId>
+    	<artifactId>sonar-pmd-plugin</artifactId>
+    	<version>2.14</version>
+    </dependency>
+    <dependency>
+    	<groupId>jdom</groupId>
+    	<artifactId>jdom</artifactId>
+    	<version>1.1</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.codehaus.sonar.plugins</groupId>
+    	<artifactId>sonar-checkstyle-plugin</artifactId>
     	<version>2.14</version>
     </dependency>
   </dependencies>

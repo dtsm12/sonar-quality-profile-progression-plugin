@@ -1,0 +1,66 @@
+<module name="Checker">
+<module name="SuppressionCommentFilter"/>
+<module name="TreeWalker">
+<module name="FileContentsHolder"/>
+
+<module name="IllegalThrows">
+<property name="severity" value="warning"/>
+</module>
+<module name="ParameterAssignment">
+<property name="severity" value="warning"/>
+</module>
+<module name="SimplifyBooleanReturn">
+<property name="severity" value="warning"/>
+</module>
+<module name="FinalClass">
+<property name="severity" value="warning"/>
+</module>
+<module name="HideUtilityClassConstructor">
+<property name="severity" value="warning"/>
+</module>
+<module name="VisibilityModifier">
+<property name="severity" value="warning"/>
+</module>
+<module name="LocalFinalVariableName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+</module>
+<module name="LocalVariableName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+</module>
+<module name="MemberName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+<property name="applyToPublic" value="true"/>
+<property name="applyToProtected" value="true"/>
+<property name="applyToPackage" value="true"/>
+<property name="applyToPrivate" value="true"/>
+</module>
+<module name="MethodName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+<property name="allowClassName" value="false"/>
+</module>
+<module name="PackageName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z]+(\.[a-zA-Z_][a-zA-Z0-9_]*)*$"/>
+</module>
+<module name="ParameterName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+</module>
+<module name="StaticVariableName">
+<property name="severity" value="warning"/>
+<property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+<property name="applyToPublic" value="true"/>
+<property name="applyToProtected" value="true"/>
+<property name="applyToPackage" value="true"/>
+<property name="applyToPrivate" value="true"/>
+</module>
+<module name="AnonInnerLength">
+<property name="severity" value="warning"/>
+</module>
+
+</module>
+</module>

@@ -55,7 +55,8 @@ import org.sonar.api.rules.Rule;
 import org.sonar.api.rules.RulePriority;
 import org.sonar.api.rules.Violation;
 import org.sonar.jpa.dao.MockProfilesDao;
-import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
+import org.sonar.plugins.qualityprofileprogression.ProfileProgressionPlugin;
+import org.sonar.plugins.qualityprofileprogression.batch.ProfileProgressionDecorator;
 
 public class ProfileProgressionDecoratorTest
 {

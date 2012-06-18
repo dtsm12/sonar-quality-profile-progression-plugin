@@ -22,7 +22,9 @@ package org.sonar.plugins.qualityprofile.progression.server;
 import org.junit.Test;
 import org.sonar.api.notifications.Notification;
 import org.sonar.plugins.emailnotifications.api.EmailMessage;
-import org.sonar.plugins.qualityprofile.progression.ProfileProgressionPlugin;
+import org.sonar.plugins.qualityprofileprogression.ProfileProgressionPlugin;
+import org.sonar.plugins.qualityprofileprogression.server.ProfileProgressedEmailTemplate;
+
 import static org.hamcrest.text.StringContains.containsString;
 import static org.junit.Assert.assertThat;
 

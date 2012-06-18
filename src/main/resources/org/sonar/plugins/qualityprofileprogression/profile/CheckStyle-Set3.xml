@@ -1,0 +1,14 @@
+<module name="Checker">
+<module name="SuppressionCommentFilter"/>
+<module name="TreeWalker">
+<module name="FileContentsHolder"/>
+
+<module name="DefaultComesLast">
+<property name="severity" value="warning"/>
+</module>
+<module name="StringLiteralEquality">
+<property name="severity" value="warning"/>
+</module>
+
+</module>
+</module>
