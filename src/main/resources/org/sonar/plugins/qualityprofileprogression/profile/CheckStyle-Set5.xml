@@ -1,7 +1,5 @@
 <module name="Checker">
-<module name="SuppressionCommentFilter"/>
 <module name="TreeWalker">
-<module name="FileContentsHolder"/>
 
 <module name="IllegalThrows">
 <property name="severity" value="warning"/>

@@ -19,7 +19,10 @@
  */
 package org.sonar.plugins.qualityprofileprogression.api;
 
+import java.util.List;
+
 import org.sonar.api.ServerComponent;
+import org.sonar.api.profiles.RulesProfile;
 import org.sonar.api.resources.Language;
 
 public interface QualityProfileProgressionHierarchy extends ServerComponent
@@ -35,4 +38,6 @@ public interface QualityProfileProgressionHierarchy extends ServerComponent
 	public String getParentProfileName(String profileName);
 
 	public boolean isInHierarchy(String profileName);
+
+	public void orderProfiles(List<RulesProfile> profiles);
 }

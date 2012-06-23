@@ -22,7 +22,6 @@ package org.sonar.plugins.qualityprofileprogression.api;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.database.DatabaseSession;
@@ -58,20 +57,23 @@ public class ProfileRulesInheritanceUpdater
 
 			List<RulesProfile> rulesProfiles = profilesDao.getRulesProfileInHierarchy(hierarchy);
 
+			// sort to hierarchy order
+			hierarchy.orderProfiles(rulesProfiles);
+
+			String parentName = null;
+
+			// link hierarchy
 			for (Iterator<RulesProfile> iterator = rulesProfiles.iterator(); iterator.hasNext();)
 			{
 				RulesProfile rulesProfile = (RulesProfile) iterator.next();
-				String parentName = hierarchy.getParentProfileName(rulesProfile.getName());
-				if (StringUtils.isNotEmpty(parentName))
+
+				if (parentName != null)
 				{
-					logger.debug("Updating rules inheritance for profile {} from profile parent {}", rulesProfile.getName(), parentName);
+					logger.debug("Changing parent of profile {} to {}", rulesProfile.getName(), parentName);
 					ValidationMessages messages = profilesManager.changeParentProfile(rulesProfile.getId(), parentName, "admin");
 					ValidationUtil.log(logger, messages, LOG_MESSAGE, rulesProfile.getName());
 				}
-				else
-				{
-					logger.debug("Parent profile for {} is null. Rules inheritance not updated.", rulesProfile.getName());
-				}
+				parentName = rulesProfile.getName();
 			}
 
 			logger.debug("Progression profile hierarchy built.");

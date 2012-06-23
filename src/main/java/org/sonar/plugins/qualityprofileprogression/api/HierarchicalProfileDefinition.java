@@ -33,6 +33,7 @@ import org.sonar.api.utils.ValidationMessages;
 public abstract class HierarchicalProfileDefinition extends ProfileDefinition
 {
 	private static final String LOG_MESSAGE = "Creating profile '{}': {}";
+	private static final String TRASH_PROFILE_NAME = "TrashHierarchicalProfileDefinition";
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -72,13 +73,20 @@ public abstract class HierarchicalProfileDefinition extends ProfileDefinition
 			ValidationUtil.log(logger, messages, LOG_MESSAGE, profileName);
 
 			profile.setLanguage(languageKey);
-			profile.setName(profileName);
-		}
-		catch (Throwable e)
-		{
-			logger.error("Error importing rules file: " + rulesFilePath, e);
-			logger.info("Creating empty RulesProfile {} for language {}.", profileName, languageKey);
-			profile = RulesProfile.create(profileName, languageKey);
+
+			if (messages.getErrors().size() == 0)
+			{
+				profile.setName(profileName);
+			}
+			else
+			{
+				profile.setName(TRASH_PROFILE_NAME);
+			}
+
+			if (parentName != null)
+			{
+				profile.setParentName(parentName);
+			}
 		}
 		finally
 		{
@@ -92,10 +100,9 @@ public abstract class HierarchicalProfileDefinition extends ProfileDefinition
 			}
 		}
 
-		if (parentName != null)
-		{
-			profile.setParentName(parentName);
-		}
+		logger.debug("Profile settings: name={}, rules={}, enabled={}, provided={}, used={}, version={}",
+				new Object[] { profile.getName(), profile.getActiveRules().size(), profile.getEnabled(), profile.getProvided(), profile.getUsed(),
+						String.valueOf(profile.getVersion()) });
 
 		return profile;
 	}

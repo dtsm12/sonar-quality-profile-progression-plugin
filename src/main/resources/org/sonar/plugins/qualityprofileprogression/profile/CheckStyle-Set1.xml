@@ -1,8 +1,6 @@
 <module name="Checker">
-<module name="SuppressionCommentFilter"/>
 <module name="TreeWalker">
 <module name="FileContentsHolder"/>
-
 <module name="EqualsHashCode">
 <property name="severity" value="error"/>
 </module>

@@ -19,14 +19,19 @@
  */
 package org.sonar.plugins.qualityprofileprogression.profile;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sonar.api.profiles.RulesProfile;
 import org.sonar.api.resources.Java;
 import org.sonar.api.resources.Language;
 import org.sonar.plugins.qualityprofileprogression.api.QualityProfileProgressionHierarchy;
+import org.sonar.plugins.qualityprofileprogression.api.RulesProfileNameComparator;
 
 public class SonarWayWithFindbugsProfileProgressionHierarchy implements QualityProfileProgressionHierarchy
 {
@@ -38,9 +43,11 @@ public class SonarWayWithFindbugsProfileProgressionHierarchy implements QualityP
 	public static final String PROFILE_NAME_PATTERN = "Sonar way with Findbugs \\(Set" + SET_NUMBER_PATTERN + "\\)";
 	Pattern pattern = Pattern.compile(SonarWayWithFindbugsProfileProgressionHierarchy.PROFILE_NAME_PATTERN);
 
+	private Comparator<RulesProfile> rulesProfileComparator = new RulesProfileNameComparator();
+
 	public String getName()
 	{
-		return "Sonar way with Findbugs Huierarchy";
+		return "Sonar way with Findbugs Hierarchy";
 	}
 
 	public Language getLanguage()
@@ -100,4 +107,10 @@ public class SonarWayWithFindbugsProfileProgressionHierarchy implements QualityP
 
 		return parentName;
 	}
+
+	public void orderProfiles(List<RulesProfile> profiles)
+	{
+		Collections.sort(profiles, rulesProfileComparator);
+	}
+
 }
