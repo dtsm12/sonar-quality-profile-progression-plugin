@@ -90,11 +90,11 @@
   <distributionManagement>
     <repository>
       <id>github.repo</id>
-      <url>https://github.com/quality-profile-progression/master/mvn-repo/releases</url>
+      <url>https://github.com/quality-profile-progression/raw/master/mvn-repo/releases</url>
     </repository>
     <snapshotRepository>
       <id>github.repo</id>
-      <url>https://github.com/quality-profile-progression/master/mvn-repo/snapshots</url>
+      <url>https://github.com/quality-profile-progression/raw/master/mvn-repo/snapshots</url>
     </snapshotRepository>
   </distributionManagement>
   
