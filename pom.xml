@@ -88,16 +88,16 @@
     </plugins>
   </build>
   <distributionManagement>
-	<repository>
-		<id>github.repo</id>
-		<url>file:///Users/David/Development/Git/repos/quality-profile-progression/mvn-repo</url>
-	</repository>
+    <repository>
+      <id>github.repo</id>
+      <url>https://github.com/quality-profile-progression/master/mvn-repo/releases</url>
+    </repository>
     <snapshotRepository>
       <id>github.repo</id>
-      <name>Sonar plugins snapshot repository</name>
-      <url>file:///Users/David/Development/Git/repos/quality-profile-progression/mvn-repo</url>
+      <url>https://github.com/quality-profile-progression/master/mvn-repo/snapshots</url>
     </snapshotRepository>
   </distributionManagement>
+  
   <dependencies>
     <dependency>
       <groupId>org.codehaus.sonar</groupId>

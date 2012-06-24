@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>org.codehaus.sonar-plugins</groupId>
+  <artifactId>sonar-quality-profile-progression-plugin</artifactId>
+  <versioning>
+    <versions>
+      <version>1.2-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20120624141821</lastUpdated>
+  </versioning>
+</metadata>

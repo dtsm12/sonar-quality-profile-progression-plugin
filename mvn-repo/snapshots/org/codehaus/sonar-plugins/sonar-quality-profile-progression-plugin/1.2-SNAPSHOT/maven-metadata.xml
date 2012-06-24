@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>org.codehaus.sonar-plugins</groupId>
+  <artifactId>sonar-quality-profile-progression-plugin</artifactId>
+  <version>1.2-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <timestamp>20120624.141819</timestamp>
+      <buildNumber>1</buildNumber>
+    </snapshot>
+    <lastUpdated>20120624141819</lastUpdated>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>jar</extension>
+        <value>1.2-20120624.141819-1</value>
+        <updated>20120624141819</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>1.2-20120624.141819-1</value>
+        <updated>20120624141819</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <classifier>sources</classifier>
+        <extension>jar</extension>
+        <value>1.2-20120624.141819-1</value>
+        <updated>20120624141819</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>

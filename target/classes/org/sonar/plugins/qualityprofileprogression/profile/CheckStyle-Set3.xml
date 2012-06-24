@@ -1,0 +1,12 @@
+<module name="Checker">
+<module name="TreeWalker">
+
+<module name="DefaultComesLast">
+<property name="severity" value="warning"/>
+</module>
+<module name="StringLiteralEquality">
+<property name="severity" value="warning"/>
+</module>
+
+</module>
+</module>
