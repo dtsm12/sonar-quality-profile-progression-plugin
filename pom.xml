@@ -10,7 +10,7 @@
 
   <artifactId>sonar-quality-profile-progression-plugin</artifactId>
   <packaging>sonar-plugin</packaging>
-  <version>1.6-SNAPSHOT</version>
+  <version>1.6</version>
   <name>Quality Profile Progression</name>
   <description>Sonar plugin to progress a project's quality profile based on violations threshold</description>
 
