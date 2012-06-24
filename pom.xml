@@ -90,11 +90,11 @@
   <distributionManagement>
     <repository>
       <id>github.repo</id>
-      <url>https://raw.github.com/dtsm12/sonar-quality-profile-progression-plugin/master/mvn-repo/repository</url>
+      <url>file://C:/Users/David/Development/Git/repos/quality-profile-progression/mvn-repo/releases</url>
     </repository>
     <snapshotRepository>
       <id>github.repo</id>
-      <url>https://raw.github.com/dtsm12/sonar-quality-profile-progression-plugin/master/mvn-repo/snapshots</url>
+      <url>file://C:/Users/David/Development/Git/repos/quality-profile-progression/mvn-repo/snapshots</url>
     </snapshotRepository>
   </distributionManagement>
   
